@@ -37,9 +37,62 @@ def get_stat(ids, counts=None):
     {(1, 2): 2, (2, 3): 1, (3, 1): 1} 과 같은 결과로 변환됩니다.
 
     또한 이미 존재하는 count 딕셔너리에 해당 결과를 누적하여 업데이트하는 것이 가능합니다.
-
     """
     counts = {} if counts is None else counts
     for pair in zip(ids, ids[1:]):
         counts[pair] = counts.get(pair, 0) + 1
     return counts
+
+
+def merge(ids, pair, idx):
+    """
+    정수로 이루어진 리스트, ids에서
+    앞뒤로 붙어 있는 값 (pair)을 찾아
+    하나의 새 숫자로 (idx)로 바꿉니다.
+
+    예시)
+    ids = [1, 2, 3, 1, 2]
+    pair = (1, 2)
+    idx = 4
+    -> 결과 [4, 3, 4]    
+
+    """
+    newids = []
+    i = 0
+    while i < len(ids):
+        # 맨 마지막이 아닐 때, 두 값이 pair와 같으면 하나로 바꾼다.
+        if ids[i] == pair[0] and i <len(ids) - 1 and ids[i+1] == pair[1]:
+            newids.append(idx)
+            i += 2
+        else:
+            newids.append(ids[i])
+            i += 1
+    return newids
+
+def replace_control_characters(s: str) -> str:
+    """
+    문자열에 포함된 유니코드 제어 문자(control characters)를
+    출력 시 문제가 발생하지 않도록 유니코드 이스케이프 형태 (\\uXXXX)로 치환합니다.
+
+    이는 개행, 탭 등 출력 환경을 왜곡하거나 보이지 않는 문자를
+    콘솔에 명시적으로 보여주기 위함입니다.
+
+    예시)
+    안녕하세요\n반갑습니다. -> 안녕하세요\u000A반갑습니다.
+    """
+    chars = []
+    for ch in s:
+        if unicodedata.category(ch)[0] != "C":
+            chars.append(ch)
+        else:
+            chars.append(f"\\u{ord(ch):04x}")
+    return "".join(chars)
+
+def render_token(t: bytes) -> str:
+    # 예시) b'\x68\x65\x6c\x6c\x6f\x0a' -> 'hello\u000a'
+    s = t.decode('utf-8', errors='replace')
+    s = replace_control_characters(s)
+    return s
+
+# -----------------------------------------------------------------------------
+# the base Tokenizer class
