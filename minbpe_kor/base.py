@@ -34,7 +34,8 @@ def get_stat(ids, counts=None):
     그 결과를 딕셔너리 형태로 반환합니다.
 
     예를 들어, [1, 2, 3, 1, 2]가 주어지면
-    {(1, 2): 2, (2, 3): 1, (3, 1): 1} 과 같은 결과로 변환됩니다.
+    - zip 함수를 통해 [(1, 2), (2, 3), (3, 1), (1, 2)]로 변환된 후
+    - {(1, 2): 2, (2, 3): 1, (3, 1): 1} 과 같은 결과로 변환됩니다.
 
     또한 이미 존재하는 count 딕셔너리에 해당 결과를 누적하여 업데이트하는 것이 가능합니다.
     """
@@ -61,7 +62,7 @@ def merge(ids, pair, idx):
     i = 0
     while i < len(ids):
         # 맨 마지막이 아닐 때, 두 값이 pair와 같으면 하나로 바꾼다.
-        if ids[i] == pair[0] and i <len(ids) - 1 and ids[i+1] == pair[1]:
+        if ids[i] == pair[0] and i < len(ids) - 1 and ids[i+1] == pair[1]:
             newids.append(idx)
             i += 2
         else:
@@ -96,3 +97,39 @@ def render_token(t: bytes) -> str:
 
 # -----------------------------------------------------------------------------
 # the base Tokenizer class
+
+class Tokenizer:
+    """토크나이저의 기본 클래스"""
+
+    def __init__(self):
+        # 기본 설정(default): 어휘(vocab) 크기 256, 병합(merge) 없음, 패턴 없음
+        self.merges = {}        # (p0:int, p1:int) -> idx:int
+        self.pattern = ""       # str
+        self.special_tokens={}  # str -> int, e.g. {'<|endoftext|>': 100257 }
+        self.vocab = self._build_vocab() # int -> byte
+
+    def train(self, text, vocab_size, verbose=False):
+        # 주어진 텍스트로부터 vocab_size 크기의 어휘를 학습하는 메서드
+        raise NotImplementedError # 하위 클래스에서 구현되어야 합니다
+    
+    def encode(self, text):
+        # 문자열을 정수 ID 리스트로 인코딩하는 메서드
+        raise NotImplementedError
+    
+    def decode(self, ids):
+        # 정수 ID 리스트를 문자열로 디코딩하는 메서드
+        raise NotImplementedError
+    
+    def _build_vocab(self):
+        # 어휘(vocab)은 병합(merge) 정보로부터 단순하고 결정론적으로 생성됩니다
+        # vocab: dict[int, bytes] / e.g. {300: b'hello'}
+        # 0~255까지의 모든 가능한 1바이트 값을 각각 하나의 토큰으로 정의한다.
+        # 어떠한 문자열이 와도 UTF-8 바이트로 항상 표현 가능하기 때문에 OOV(Out of Vocabulary) 문제가 발생하지 않는다.
+        vocab = {idx: bytes([idx]) for idx in range(256)} 
+        for (p0, p1), idx in self.merges.items():
+            vocab[idx] = vocab[p0] + vocab[p1]
+        for special, idx in self.special_tokens.items():
+            vocab[idx] = special.encode("utf-8")
+        return vocab
+    
+
